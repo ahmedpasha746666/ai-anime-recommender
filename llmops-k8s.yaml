@@ -1,0 +1,57 @@
+# -------------------- DEPLOYMENT --------------------
+apiVersion: apps/v1          # API version for Deployment resource
+kind: Deployment            # We are creating a Deployment
+
+metadata:
+  name: llmops-app          # Name of the Deployment
+  labels:
+    app: llmops             # Label used to identify this app
+
+spec:
+  replicas: 1               # Number of pods (1 instance of your app)
+
+  selector:
+    matchLabels:
+      app: llmops           # Select pods with this label
+
+  template:                 # Template for creating pods
+    metadata:
+      labels:
+        app: llmops         # Label assigned to each pod
+
+    spec:
+      containers:
+      - name: llmops-container    # Container name
+        image: llmops-app:latest  # Docker image (local image)
+        imagePullPolicy: IfNotPresent  
+        # If image exists locally → use it
+        # If not → pull from registry
+
+        ports:
+          - containerPort: 8501   # App runs on port 8501 (Streamlit default)
+
+        envFrom:
+          - secretRef:
+              name: llmops-secrets  
+              # Load environment variables from Kubernetes Secret
+              # Example: API keys, DB passwords
+
+---
+# -------------------- SERVICE --------------------
+apiVersion: v1              # API version for Service
+kind: Service              # We are creating a Service
+
+metadata:
+  name: llmops-service     # Name of the Service
+
+spec:
+  type: LoadBalancer       # Expose app to internet (external IP)
+
+  selector:
+    app: llmops            # Connect to pods with this label
+
+  ports:
+    - protocol: TCP
+      port: 80             # External port (user hits this)
+      targetPort: 8501     # Internal container port
+      # Request flow: User → 80 → 8501 (inside pod)
